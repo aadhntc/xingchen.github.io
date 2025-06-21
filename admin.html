@@ -56,17 +56,25 @@
     <script>
         // 页面加载时从GitHub加载数据
         document.addEventListener('DOMContentLoaded', function() {
-            loadConfig();
+            fetch('/data.json')
+                .then(response => response.json())
+                .then(config => {
+                    document.getElementById('siteName').value = config.siteName || '';
+                    document.getElementById('siteSubtitle').value = config.siteSubtitle || '';
+                    document.getElementById('logoPreview').src = config.logo || '';
+                    
+                    // 加载资源
+                    loadResources(config.resources || []);
+                })
+                .catch(error => {
+                    console.error('加载数据失败:', error);
+                });
             
             // 添加资源按钮事件
-            document.getElementById('addResource').addEventListener('click', function() {
-                addResource();
-            });
+            document.getElementById('addResource').addEventListener('click', addResource);
             
             // 保存按钮事件
-            document.getElementById('saveButton').addEventListener('click', function() {
-                saveConfig();
-            });
+            document.getElementById('saveButton').addEventListener('click', saveConfig);
             
             // Logo上传预览
             document.getElementById('logoUpload').addEventListener('change', function(e) {
@@ -81,28 +89,7 @@
             });
         });
         
-        // 加载配置
-        function loadConfig() {
-            fetch('https://api.github.com/repos/<your-username>/<your-repo>/contents/data.json?ref=main')
-                .then(response => response.json())
-                .then(data => {
-                    // 解析Base64编码的内容
-                    const content = atob(data.content);
-                    const config = JSON.parse(content);
-                    
-                    document.getElementById('siteName').value = config.siteName || '';
-                    document.getElementById('siteSubtitle').value = config.siteSubtitle || '';
-                    document.getElementById('logoPreview').src = config.logo || '';
-                    
-                    // 加载资源
-                    loadResources(config.resources || []);
-                })
-                .catch(error => {
-                    console.error('加载数据失败:', error);
-                });
-        }
-        
-        // 保存配置到GitHub
+        // 保存配置到本地文件
         function saveConfig() {
             const config = {
                 siteName: document.getElementById('siteName').value,
@@ -112,51 +99,18 @@
             };
             
             // 将配置转换为JSON字符串
-            const configJson = JSON.stringify(config);
+            const configJson = JSON.stringify(config, null, 2);
             
-            // 获取当前data.json文件的信息
-            fetch('https://api.github.com/repos/<your-username>/<your-repo>/contents/data.json?ref=main')
-                .then(response => response.json())
-                .then(data => {
-                    // 创建Base64编码的内容
-                    const base64Content = btoa(configJson);
-                    
-                    // 设置GitHub API请求
-                    const githubApiUrl = 'https://api.github.com/repos/<your-username>/<your-repo>/contents/data.json';
-                    const token = '<your-github-personal-access-token>';
-                    
-                    const updateData = {
-                        message: 'Update website configuration',
-                        content: base64Content,
-                        sha: data.sha
-                    };
-                    
-                    // 发送PUT请求更新文件
-                    fetch(githubApiUrl, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(updateData)
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('GitHub API请求失败');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        alert('配置保存成功！');
-                    })
-                    .catch(error => {
-                        console.error('保存配置失败:', error);
-                        alert('保存失败，请重试!');
-                    });
-                })
-                .catch(error => {
-                    console.error('获取文件信息失败:', error);
-                });
+            // 创建下载链接
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/json;charset=utf-8,' + encodeURIComponent(configJson));
+            element.setAttribute('download', 'data.json');
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+            
+            alert('配置文件已下载，请手动上传到GitHub仓库！');
         }
         
         // 获取资源数据
