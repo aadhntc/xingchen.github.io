@@ -28,13 +28,9 @@
     <script>
         // 页面加载时从GitHub加载数据
         document.addEventListener('DOMContentLoaded', function() {
-            fetch('https://api.github.com/repos/<your-username>/<your-repo>/contents/data.json?ref=main')
+            fetch('/data.json')
                 .then(response => response.json())
-                .then(data => {
-                    // 解析Base64编码的内容
-                    const content = atob(data.content);
-                    const config = JSON.parse(content);
-                    
+                .then(config => {
                     // 更新页面内容
                     document.getElementById('siteName').textContent = config.siteName || '星辰秘密基地';
                     document.getElementById('siteSubtitle').textContent = config.siteSubtitle || '永久导航，资源宝库';
