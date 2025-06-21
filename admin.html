@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星辰秘密基地 - 管理页面</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="file"], button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <h1>星辰秘密基地 - 管理页面</h1>
+        
+        <div class="form-group">
+            <label for="siteName">网站名称</label>
+            <input type="text" id="siteName">
+        </div>
+        
+        <div class="form-group">
+            <label for="siteSubtitle">网站副标题</label>
+            <input type="text" id="siteSubtitle">
+        </div>
+        
+        <div class="form-group">
+            <label for="logoUpload">上传Logo</label>
+            <input type="file" id="logoUpload">
+            <img id="logoPreview" src="" alt="Logo预览" style="max-width: 100px; margin-top: 10px;">
+        </div>
+        
+        <h2>资源管理</h2>
+        <div id="resourcesContainer"></div>
+        <button id="addResource">添加资源</button>
+        
+        <button id="saveButton" style="margin-top: 20px;">保存配置</button>
+    </div>
+
+    <script>
+        // 页面加载时从GitHub加载数据
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            
+            // 添加资源按钮事件
+            document.getElementById('addResource').addEventListener('click', function() {
+                addResource();
+            });
+            
+            // 保存按钮事件
+            document.getElementById('saveButton').addEventListener('click', function() {
+                saveConfig();
+            });
+            
+            // Logo上传预览
+            document.getElementById('logoUpload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        document.getElementById('logoPreview').src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+        
+        // 加载配置
+        function loadConfig() {
+            fetch('https://api.github.com/repos/<your-username>/<your-repo>/contents/data.json?ref=main')
+                .then(response => response.json())
+                .then(data => {
+                    // 解析Base64编码的内容
+                    const content = atob(data.content);
+                    const config = JSON.parse(content);
+                    
+                    document.getElementById('siteName').value = config.siteName || '';
+                    document.getElementById('siteSubtitle').value = config.siteSubtitle || '';
+                    document.getElementById('logoPreview').src = config.logo || '';
+                    
+                    // 加载资源
+                    loadResources(config.resources || []);
+                })
+                .catch(error => {
+                    console.error('加载数据失败:', error);
+                });
+        }
+        
+        // 保存配置到GitHub
+        function saveConfig() {
+            const config = {
+                siteName: document.getElementById('siteName').value,
+                siteSubtitle: document.getElementById('siteSubtitle').value,
+                logo: document.getElementById('logoPreview').src,
+                resources: saveResources()
+            };
+            
+            // 将配置转换为JSON字符串
+            const configJson = JSON.stringify(config);
+            
+            // 获取当前data.json文件的信息
+            fetch('https://api.github.com/repos/<your-username>/<your-repo>/contents/data.json?ref=main')
+                .then(response => response.json())
+                .then(data => {
+                    // 创建Base64编码的内容
+                    const base64Content = btoa(configJson);
+                    
+                    // 设置GitHub API请求
+                    const githubApiUrl = 'https://api.github.com/repos/<your-username>/<your-repo>/contents/data.json';
+                    const token = '<your-github-personal-access-token>';
+                    
+                    const updateData = {
+                        message: 'Update website configuration',
+                        content: base64Content,
+                        sha: data.sha
+                    };
+                    
+                    // 发送PUT请求更新文件
+                    fetch(githubApiUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updateData)
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('GitHub API请求失败');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        alert('配置保存成功！');
+                    })
+                    .catch(error => {
+                        console.error('保存配置失败:', error);
+                        alert('保存失败，请重试!');
+                    });
+                })
+                .catch(error => {
+                    console.error('获取文件信息失败:', error);
+                });
+        }
+        
+        // 获取资源数据
+        function saveResources() {
+            const resources = [];
+            document.querySelectorAll('#resourcesContainer .resource-item').forEach(resourceDiv => {
+                resources.push({
+                    title: resourceDiv.querySelector('input[type="text"]').value,
+                    link: resourceDiv.querySelector('input[type="url"]').value,
+                    icon: resourceDiv.querySelector('img').src
+                });
+            });
+            return resources;
+        }
+        
+        // 加载资源到管理页面
+        function loadResources(resources) {
+            const resourcesContainer = document.getElementById('resourcesContainer');
+            resourcesContainer.innerHTML = '';
+            
+            resources.forEach(resource => {
+                const resourceDiv = document.createElement('div');
+                resourceDiv.className = 'resource-item';
+                resourceDiv.innerHTML = `
+                    <input type="text" value="${resource.title}" placeholder="资源名称">
+                    <input type="url" value="${resource.link}" placeholder="资源链接">
+                    <img src="${resource.icon}" style="max-width: 50px; margin: 5px 0;">
+                    <button onclick="removeResource(this)">删除</button>
+                `;
+                resourcesContainer.appendChild(resourceDiv);
+            });
+        }
+        
+        // 添加资源
+        function addResource() {
+            const resourcesContainer = document.getElementById('resourcesContainer');
+            const resourceDiv = document.createElement('div');
+            resourceDiv.className = 'resource-item';
+            resourceDiv.innerHTML = `
+                <input type="text" placeholder="资源名称">
+                <input type="url" placeholder="资源链接">
+                <img src="default-icon.png" style="max-width: 50px; margin: 5px 0;">
+                <button onclick="removeResource(this)">删除</button>
+            `;
+            resourcesContainer.appendChild(resourceDiv);
+        }
+        
+        // 删除资源
+        function removeResource(button) {
+            const resourceDiv = button.parentElement;
+            resourceDiv.remove();
+        }
+    </script>
+</body>
+</html>
