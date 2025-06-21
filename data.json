@@ -1,0 +1,16 @@
+{
+  "siteName": "星辰秘密基地",
+  "siteSubtitle": "永久导航，资源宝库",
+  "logo": "/default-logo.png",
+  "resources": [
+    {
+      "id": 1,
+      "title": "号卡平台合集",
+      "icon": "/default-icon.png",
+      "link": "https://example.com"
+    }
+  ],
+  "shareItems": [],
+  "homeItems": [],
+  "copyright": "© 2025 星辰导航 - 永久导航"
+}
